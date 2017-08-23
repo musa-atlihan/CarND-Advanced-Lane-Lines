@@ -316,7 +316,6 @@ def birds_eye_transform(img, points, offsetx):
     
     img_size = img[:,:,0].shape[::-1]
     
-    
     # get the region of interest
     img = region_of_interest(img, np.array([points]))
     
@@ -446,6 +445,24 @@ def search_lane(warped_list, n_stepsy=9, n_stepsx=2, std_max=5., min_samp=50):
         else:
             std = np.inf
         return n_samples, std, x_absolute.tolist(), y_absolute.tolist()
+
+
+    ######################################################
+    ### additional improvement for challenge videos    ###
+    ######################################################
+    def clean_inds(lane_ind_list, peak_list, threshold=50):
+        """Clean noise from detected lane pixels."""
+
+        #avg_peaks = np.sum(peak_list) // len(peak_list)
+        x_inds = np.array(lane_ind_list[0])
+        y_inds = np.array(lane_ind_list[1])
+        #x = np.where(np.abs(x_inds-avg_peaks) > threshold)[0]
+        #mask = np.ones(x_inds.shape[0], dtype=bool)
+        #mask[x] = False
+        #x_inds = x_inds[mask]
+        #y_inds = y_inds[mask]
+
+        return x_inds, y_inds
     
     
     warped, warped_histeq = warped_list
@@ -484,19 +501,32 @@ def search_lane(warped_list, n_stepsy=9, n_stepsx=2, std_max=5., min_samp=50):
     ### additional improvement for severe shadow cases ###
     ######################################################
     bin_hsv_ch1, bin_hsv_ch2, bin_hsv_ch3 =\
-        color_thresholding(warped_histeq, ch_type='hsv', thr=(0, 50), plot=False)
+        color_thresholding(warped_histeq, ch_type='hsv', thr=(0, 60), plot=False)
     # add binary image of H channel for severe shadow conditions
     binary_images.append(bin_hsv_ch1)
+    thr_rgb_list = [
+        (195, 255),
+        (180, 255),
+        (150, 200)
+    ]
+    for thr_rgb in thr_rgb_list:
+        binary = combined_color_thresholding(
+            warped_histeq, thr_rgb=thr_rgb, thr_hsv=(0,0), thr_luv=(0,0))
+        binary_images.append(binary)
     
+    img_size = (warped.shape[0], warped.shape[1])
+    peaks_left = []
+    peaks_right = []
+    peak_left_prev = 522
+    peak_right_prev = 800
     for i in range(n_stepsy):
-        starty = i * offsety
-        endy = (i+1) * offsety
+        endy = img_size[0] - i*offsety
+        starty = img_size[0] - (i+1)*offsety
         
         left_res, right_res = False, False
         for binary in binary_images:
             
             for j in range(n_stepsx):
-                
                 startx = j * offsetx
                 endx = (j+1) * offsetx
                 
@@ -517,15 +547,23 @@ def search_lane(warped_list, n_stepsy=9, n_stepsx=2, std_max=5., min_samp=50):
                     # append x and y coors for detected lane pixels
                     # decide if left or right lane pixels
                     if peak_base < halfx:
-                        left_res = True
-                        left_lane_inds[0].extend(x)
-                        left_lane_inds[1].extend(y)
-                        color = (255,0,0)
-                    else:
-                        right_res = True
-                        right_lane_inds[0].extend(x)
-                        right_lane_inds[1].extend(y)
                         color = (0,0,255)
+                        if np.abs(peak_base - peak_left_prev) < 70:
+                            peak_left_prev = peak_base
+                            peaks_left.append(peak_base)
+                            left_res = True
+                            left_lane_inds[0].extend(x)
+                            left_lane_inds[1].extend(y)
+                            color = (255,0,0)
+                    else:
+                        color = (0,0,255)
+                        if np.abs(peak_base - peak_right_prev) < 70:
+                            peak_right_prev = peak_base
+                            peaks_right.append(peak_base)
+                            right_res = True
+                            right_lane_inds[0].extend(x)
+                            right_lane_inds[1].extend(y)
+                            color = (0,255,0)
                     # draw output image
                     out_img[y,x,:] = 255
                     cv2.rectangle(
@@ -533,10 +571,17 @@ def search_lane(warped_list, n_stepsy=9, n_stepsx=2, std_max=5., min_samp=50):
                         (winx_start,starty),
                         (winx_end,endy),
                         color, 2)
+
             if left_res & right_res:
+                # update midpoint of lanes (current_halfx)
+                halfx = peaks_left[-1] + (peaks_right[-1]-peaks_left[-1])//2
                 break
-    
-    return out_img, left_lane_inds, right_lane_inds
+
+    # clean indices
+    left_inds_x, left_inds_y = clean_inds(left_lane_inds, peaks_left, threshold=50)
+    right_inds_x, right_inds_y = clean_inds(right_lane_inds, peaks_right, threshold=50)
+
+    return out_img, left_inds_x, left_inds_y, right_inds_x, right_inds_y
 
 
 
@@ -545,23 +590,24 @@ def search_lane(warped_list, n_stepsy=9, n_stepsx=2, std_max=5., min_samp=50):
 def fit_lane(lane_img, left_lane_inds, right_lane_inds):
     """Fit lane lines and do the measurements."""
     
+    left_inds_x, left_inds_y = left_lane_inds
+    right_inds_x, right_inds_y = right_lane_inds
+
     res = False
     marked_lane_img = None
     filled_lane_img = None
     fit_lane_img = None
     avg_curve_radi = None
-    if (len(left_lane_inds[0]) > 0) & (len(left_lane_inds[1]) > 0)\
-        & (len(right_lane_inds[0]) > 0) & (len(right_lane_inds[1]) > 0):
+    if (len(left_inds_x) > 0) & (len(left_inds_y) > 0)\
+        & (len(right_inds_x) > 0) & (len(right_inds_y) > 0):
         
         res = True
         # fit
         # 2 degree polynomial
-        left_lane_inds = np.array(left_lane_inds)
-        right_lane_inds = np.array(right_lane_inds)
         # we will fit y, rather than x just because most x values may
         # be the same for different y values (f(y)=Ay^2+By+C).
-        left_fit = np.polyfit(left_lane_inds[1], left_lane_inds[0], 2)
-        right_fit = np.polyfit(right_lane_inds[1], right_lane_inds[0], 2)
+        left_fit = np.polyfit(left_inds_y, left_inds_x, 2)
+        right_fit = np.polyfit(right_inds_y, right_inds_x, 2)
     
         # generate x and y values for plotting
         ploty = np.linspace(0, lane_img.shape[0]-1, lane_img.shape[0])
@@ -607,9 +653,9 @@ def fit_lane(lane_img, left_lane_inds, right_lane_inds):
         ym_per_pix = 30/720 # meters per pixel in y dimension
         xm_per_pix = 3.7/200 # meters per pixel in x dimension
         left_fit_cr = np.polyfit(
-            left_lane_inds[1]*ym_per_pix, left_lane_inds[0]*xm_per_pix, 2)
+            left_inds_y*ym_per_pix, left_inds_x*xm_per_pix, 2)
         right_fit_cr = np.polyfit(
-            right_lane_inds[1]*ym_per_pix, right_lane_inds[0]*xm_per_pix, 2)
+            right_inds_y*ym_per_pix, right_inds_x*xm_per_pix, 2)
         left_curverad = (
             (1 + (2*left_fit_cr[0]*y_eval*ym_per_pix + left_fit_cr[1])**2)**1.5)\
             / np.absolute(2*left_fit_cr[0])
@@ -638,7 +684,7 @@ def combine_output(output_images, measurements):
         combined_birds = cv2.resize(combined_birds, (combined_birds.shape[1]//2, combined_birds.shape[0]//2))
         # combine all 3 images
         combined_img = np.copy(bgr2rgb(output_images[4]))
-        combined_img[0:360,800:1280] = combined_birds
+        combined_img[0:combined_birds.shape[0],1280-combined_birds.shape[1]:1280] = combined_birds
         # add text
         fontface = cv2.FONT_HERSHEY_SIMPLEX
         fontscale = 1
@@ -697,14 +743,15 @@ def lane_detector(image, c_mtx=None, dist=None, std_max=15., min_samp=30):
     
     # source points for the top-view transformation
     points = np.array([
-        [545, 457],
-        [735, 457],
+        [580, 457],
+        [700, 457],
         [1280, 720],
         [0, 720],
         ])
     
+    birds_eye_offsetx = 430
     # get top-view image (warped) and the inverse matrix (invmtx)
-    invmtx, warped = birds_eye_transform(image, points, offsetx=430)
+    invmtx, warped = birds_eye_transform(image, points, offsetx=birds_eye_offsetx)
 
     ######################################################
     ### additional improvement for severe shadow cases ###
@@ -719,18 +766,19 @@ def lane_detector(image, c_mtx=None, dist=None, std_max=15., min_samp=30):
     # combine channels back (in BGR order)
     histeq = np.dstack((equ1,equ2,equ3))
     # also get top-view of histeq
-    _, warped_histeq = birds_eye_transform(histeq, points, offsetx=430)
+    _, warped_histeq = birds_eye_transform(histeq, points, offsetx=birds_eye_offsetx)
 
     # list histeq and warped
     warped_list = [bgr2rgb(warped), bgr2rgb(warped_histeq)]
+    ######################################################
     
     # search lane pixels
-    lane_lines, left_lane_inds, right_lane_inds =\
-        search_lane(warped_list, n_stepsy=9, n_stepsx=2, std_max=std_max, min_samp=min_samp)
+    lane_lines, left_inds_x, left_inds_y, right_inds_x, right_inds_y =\
+        search_lane(warped_list, n_stepsy=36, n_stepsx=2, std_max=std_max, min_samp=min_samp)
     
     # fit
     res, marked_lane_img, filled_lane_img, curve_radi =\
-        fit_lane(lane_lines, left_lane_inds, right_lane_inds)
+        fit_lane(lane_lines, (left_inds_x, left_inds_y), (right_inds_x, right_inds_y))
     
     # unwrap, get back to prev viewpoint and output the final image.
     img_size = image[:,:,0].shape[::-1]
