@@ -41,7 +41,7 @@ Distortions can be easily detected by taking pictures of the known shapes, such 
 
 By taking multiple images of a chessboard on a flat surcase, we can detect the distortions by looking at the differences of size and shape of the squares (please see the function `camera_calibration_params`). Then a transform can be created to map distorted points to undistorted points. A raw chessboard image and the resulting distortion-corrected image are given below.
 
-[raw-undistorted image example](./images/raw-undist.png)
+![raw-undistorted image example](./images/raw-undist.png)
 
 The image on the right is the result of an distortion-corrected image.
 
@@ -50,7 +50,7 @@ The image on the right is the result of an distortion-corrected image.
 
 By implementing a helper function (named `undistort`) for distortion correction, all of the test images are corrected and saved in the [output_images](./output_images) directory. The raw test images and the distortion-corrected resulting images are given below.
 
-[undistorted test images](./images/undist-test-imgs.png)
+![undistorted test images](./images/undist-test-imgs.png)
 
 The images on the left are the raw images and on the right are the distortion-corrected results after calibrating the camera and applying distortion correction.
 
@@ -74,11 +74,11 @@ To summarize, a perpective transform changes the perspective to view the same sc
 
 Selecting four points on an image is enough to define a linear transformation from one perspective to another. For this purpose a transformation is demonstrated on a chessboard image and implemented a perspective transformation function (`birds_eye_transform`) for later use.
 
-[perspective transformation step 1](./images/chess-perst1.png)
+![perspective transformation step 1](./images/chess-perst1.png)
 
 The source points indicated with the yellow color are chosen from the automatically detected corners using `findChessboardCorners` function of the `opencv` library and these points are transformed to destination points which are indicated with the red color on the same image above. The resulting image below, demonstrates the result of the transformed viewpoint.
 
-[perspective transformation step 2](./images/pers-res.png)
+![perspective transformation step 2](./images/pers-res.png)
 
 ## Thresholding Methods
 
@@ -89,7 +89,7 @@ Together with Hough line transformation, the Canny edge detection technique hold
 A sobel operation function named `multiple_edge_detection` is implemented combining multiple sobel operations to get a binary representation of an image. An original image (on the left) and the binary representation after the `multiple_edge_detection` function is applied (on the right) is given below (this image is provived by udacity in the project but not being a test image).
 
 
-[sobel binary image](./images/sobel-binary.png)
+![sobel binary image](./images/sobel-binary.png)
 
 
 ### Color Spaces and The Color Thresholding
@@ -100,13 +100,13 @@ When detecting the edges, since the images are converted to gray scales, the val
 
 The lane detecting system should be robust to both shadow effects and reflections. for this purpose, various hard case images captured from the [challenge](challenge_video.mp4) and [harder challenge](harder_challenge_video.mp4) videos of the project to investigate the results for various color spaces. The captured images have reflection or shadow cases and perfect for investigating the results of reliability of invariant representations. The chosen hard case images are given below.
 
-[hard case images](./images/hard-imgs.png)
+![hard case images](./images/hard-imgs.png)
 
 To compare the representations of hard case images in different color channels, `color_thresholding` and `compare_2img_color_thr` functions are implemented to convert the images from RGB to another color spaces.
 
 At first, an image with sun reflecting on the road and an image with shadows on the road are chosen and investigated in various color spaces. The image with the reflection is represented on the first three columns for each of these columns is representing a color channel and the second image with the shadow is represented on the last three columns for each of these columns is again representing a color channel is given below.
 
-[color spaces investigation 1](./images/color-sp-invest-1.png)
+![color spaces investigation 1](./images/color-sp-invest-1.png)
 
 The first three columns are the representations of three different channels (ch1, ch2, ch3) for the first image, and the last three columns are again the representations three channels (ch1, ch2, ch3) for the second image with each row representing a different color space. 
 
@@ -118,7 +118,7 @@ In addition, the information of white lane pixels are also well preserved with c
 
 The representations of two of the hard images are given below in different color spaces to demonstrate how the line information is lost in severe shadow cases.
 
-[severe shadow case in different color spaces](./images/severe-shafow-binary.png)
+![severe shadow case in different color spaces](./images/severe-shafow-binary.png)
 
 The first three columns are the representations of three different channels (ch1, ch2, ch3) for the first image, and the last three columns are again the representations three channels (ch1, ch2, ch3) for the second image with each row representing a different color space. These two images are from the harder challenge video captured in different times to demonstrate the lost information of the lane lines when the vehicle is passing under a bridge. Here in this case, the color loss is due to the reflecting light from other surrounding objects in severe shadow cases [(Ying et al., 2017)](https://arxiv.org/abs/1708.00975). An extra solution for the case is discussed and the results are demonstrated [here in this additional report](challenge-illuminant-invariance-solution.ipynb). 
 
@@ -128,7 +128,7 @@ For the purpose of detecting the lane pixels, a combined color thresholding func
 
 The results on the test images are given below. The original test images with the bird's-eye view of the region of interest are given on the left and the resulting binary images with the lane pixels are given on the right.
 
-[test images with combined binary thresholding](./images/test-imgs-birds-thr.png)
+![test images with combined binary thresholding](./images/test-imgs-birds-thr.png)
 
 
 ## The Lane Finding Pipeline
@@ -151,7 +151,7 @@ The binary image from the color thresholding is used to identify the lane pixels
 
 The original test images and the resulting images with lane pixel detections and line predictions are given below. The original test images with the bird's-eye view of the region of interest is on the left and the resulting binary images are on the right. The detected lane pixels are shown with bounding boxes. The blue colored bounding boxes are for the left lane line pixels and the red bounding boxes are for the right lane line pixels. The white pixels in the binary images are the identified pixels with combined color thresholding and the green lines are the predicted lane lines with the second order polynomial regression.
 
-[detected lane pixels and predicted lane lines](./images/detected-lane-lines.png)
+![detected lane pixels and predicted lane lines](./images/detected-lane-lines.png)
 
 ### Measuring the radius and the position
 
