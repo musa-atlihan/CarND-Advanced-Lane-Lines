@@ -6,7 +6,7 @@ While there is more sophisticated instruments like lidars and radars, for the ta
 
 On this poject, using only the camera images, we will focus on measuring how much is the line curving and where the vehicle is with respect to center of the lane.
 
-## Sections of the report
+## Sections
 
 * **[Calibrating Image Distortions:](#calibrating-image-distortions)** A brief explanation is given about the math and how to calibrate a camera. Then, an image distortion correction function is implemented using [opencv](http://opencv.org/) library to correct the distortions on the raw images provided for the project.
 
@@ -43,10 +43,10 @@ By taking multiple images of a chessboard on a flat surcase, we can detect the d
 
 ![raw-undistorted image example](./images/raw-undist.png)
 
-The image on the right is the result of an distortion-corrected image.
+The image on the right is the result of the distortion correction.
 
 
-### distortion-corrected Test Images
+### Distortion-corrected Test Images
 
 By implementing a helper function (named `undistort`) for distortion correction, all of the test images are corrected and saved in the [output_images](./output_images) directory. The raw test images and the distortion-corrected resulting images are given below.
 
@@ -104,7 +104,7 @@ The lane detecting system should be robust to both shadow effects and reflection
 
 To compare the representations of hard case images in different color channels, `color_thresholding` and `compare_2img_color_thr` functions are implemented to convert the images from RGB to another color spaces.
 
-At first, an image with sun reflecting on the road and an image with shadows on the road are chosen and investigated in various color spaces. The image with the reflection is represented on the first three columns for each of these columns is representing a color channel and the second image with the shadow is represented on the last three columns for each of these columns is again representing a color channel is given below.
+At first, an image with sun reflecting on the road (the first image in hard case images) and an image with shadows on the road (the second image in hard case images) are chosen and investigated in various color spaces. The image with the reflection is represented on the first three columns for each of these columns is representing a color channel and the second image with the shadow is represented on the last three columns for each of these columns is again representing a color channel is given below.
 
 ![color spaces investigation 1](./images/color-sp-invest-1.png)
 
@@ -116,7 +116,7 @@ In addition, the information of white lane pixels are also well preserved with c
 
 #### The severe shadow cases
 
-The representations of two of the hard images are given below in different color spaces to demonstrate how the line information is lost in severe shadow cases.
+The representations of the third and the fourth images of the hard case images are given below in different color spaces to demonstrate how the line information is lost in severe shadow cases.
 
 ![severe shadow case in different color spaces](./images/severe-shafow-binary.png)
 
@@ -124,12 +124,13 @@ The first three columns are the representations of three different channels (ch1
 
 #### Detecting lane pixels
 
-For the purpose of detecting the lane pixels, a combined color thresholding function named `combined_color_thresholding` is implemented. In the implementation RGB, HSV and LUV color spaces are used to combine the thresholding results to get a resulting binary image of lane pixels. R channel in RGB space is used to get white lane pixels in an image with high intensity values. In addition, since [the project video](./project_video.mp4) does not have hard lighting conditions, it was enough to use the V channels from HSV and LUV spaces to detect the yellow colored lane pixels. Combining the results of the R channel from RGB and the V channels from HSV and LUV spaces, a binary output image is generated. For an extended solution to the severe shadow cases please visit [here](./challenge-illuminant-invariance-solution.ipynb).
+For the purpose of detecting the lane pixels, a combined color thresholding function named `combined_color_thresholding` is implemented. In the implementation RGB, HSV and LUV color spaces are used to combine the thresholding results to get a resulting binary image of lane pixels. R channel in RGB space is used to get white lane pixels in an image with high intensity values (the pixels within the range of 230 and 255 intensity values are chosen). In addition, since [the project video](./project_video.mp4) does not have hard lighting conditions, it was enough to use the V channels from HSV and LUV spaces to detect the yellow colored lane pixels (the intensity value range is 230 to 255 for HSV space and 157 to 255 for LUV space). Combining the results of the R channel from RGB and the V channels from HSV and LUV spaces, a binary output image is generated. For an extended solution to the severe shadow cases please visit [here](./challenge-illuminant-invariance-solution.ipynb).
 
 The results on the test images are given below. The original test images with the bird's-eye view of the region of interest are given on the left and the resulting binary images with the lane pixels are given on the right.
 
 ![test images with combined binary thresholding](./images/test-imgs-birds-thr.png)
 
+As can be seen from the binary images on the right, in shadow cases, some low intensity valued lane pixels are lost. To avoid this, an additinaly generated binary image, thresholded between 185 and 230 intensity values in R channel, is used whenever this is the case.
 
 ## The Lane Finding Pipeline
 
@@ -143,7 +144,7 @@ Using the helper functions mentioned in the previous sections, a lane finding pi
 * Colors the lane using the identified lane boundaries and transforms the viewpoint back to its original position.
 * Outputs the resulting image.
 
-the distortion correction, viewpoint transformation and the combined color thresholding methods are already mentioned in the previous sections. In the following subsections the lane line identification from the binary image and measuring the radius and the position are discussed in detail.
+The distortion correction, viewpoint transformation and the combined color thresholding methods are already mentioned in the previous sections. In the following subsections the lane line identification from the binary image and measuring the radius and the position are discussed in detail.
 
 ### Identifying left and right lane lines from the binary image
 
@@ -155,7 +156,7 @@ The original test images and the resulting images with lane pixel detections and
 
 ### Measuring the radius and the position
 
-[The formula](http://www.intmath.com/applications-differentiation/8-radius-curvature.php) for the radius of curvature at any point x for the curve $y = f(x)$ is used to measure the radius of the lane curvatures. The regression data of the predicted lane lines are used seprately to measure the radius of the left and the right lane curvatures. To measure the radius values in meters, the lane distance is considered to be approximately 30 meters long with the width of the lane as 3.7 meters. Using the bird's-eye viewpoint, the quantities of meters per pixel in x and y dimensions are taken as 3.7/200 and 30/720 respectively. Using these quantites, the coefficients of the polynomial are recalculated in world space and using the previously mentioned radius formula the left and the right radius of the line curvatures are measured. Then the average of these two radius values are taken as the resulting radius of the lane curvature. 
+[The formula](http://www.intmath.com/applications-differentiation/8-radius-curvature.php) for the radius of curvature at any point x for the curve $y = f(x)$ is used to measure the radius of the lane curvatures. The regression data of the predicted lane lines are used seprately to measure the radius of the left and the right lane curvatures. To measure the radius values in meters, the lane distance is considered to be approximately 30 meters long with the width of the lane as 3.7 meters. Using the bird's-eye viewpoint, the quantities of meters per pixel in x and y dimensions are taken as 3.7/300 and 30/720 respectively. Using these quantites, the coefficients of the polynomial are recalculated in world space and using the previously mentioned radius formula the left and the right radius of the line curvatures are measured. Then the average of these two radius values are taken as the resulting radius of the lane curvature. 
 
 For to measure the position of the vehicle, the midpoint of the two predicted lane lines is measured at the bottom of the image as being the reference point. Then the horizontal midpoint of the image is taken as the position of the vehicle and the distance between these two points is measured as the position of the vehicle with respect to the center of the lane.
 
@@ -168,13 +169,20 @@ All of the measurements mentioned above are implemented in the helper function `
 
 After predicting the lane lines and measuring the radius and the position, as the final step of the pipeline, the lane is colored using the identified lane boundaries and drawn on the original image by transforming the viewpoint back to its original position. The resulting test images with identified lanes and measurements are given below.
 
-/////////
+![final test image 1](./output_images/final_test_images/img1.png)
+![final test image 2](./output_images/final_test_images/img2.png)
+![final test image 3](./output_images/final_test_images/img3.png)
+![final test image 4](./output_images/final_test_images/img4.png)
+![final test image 5](./output_images/final_test_images/img5.png)
+![final test image 6](./output_images/final_test_images/img6.png)
+![final test image 7](./output_images/final_test_images/img7.png)
+![final test image 8](./output_images/final_test_images/img8.png)
 
 ### The project video
 
-The pipeline is used along with the `moviepy` library to identify the lane of the vehicle in the project video. For the final video with the identified lane and the measurements please visit [here](//////////).
+The pipeline is used along with the `moviepy` library to identify the lane of the vehicle in the project video. For the final video with the identified lane and the measurements please visit [here](https://youtu.be/WIe3X4WLmac).
 
-/////// video gif
+[![final video lane finding](./images/final_vid.gif)](https://youtu.be/WIe3X4WLmac)
 
 ## Possible Improvements
 
