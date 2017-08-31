@@ -29,11 +29,11 @@ Image distortions occur when transforming a 3D object to a 2D image due to type 
 
 The object being pictured has 3D coordinates P(X,Y,Z), however a pinhole camera transforms this information to form a 2D image p(x,y), just using a tranformative matrix called Camera matrix (C)
 
-$P\approx Cp.$
+![camera matrix](./images/cam-matrix.gif)
 
 And when it is a camera with special lenses that taking pictures of 3D objects, the distortion usually can be captured by 5 numbers called distortion coefficients
 
-$Distortion_{coeff} = (k_1, k_2, p_1, p_2, k_3).$
+![distortion coefficients](./images/dist-coeff.gif)
 
 ### How to detect distortions
 
@@ -84,7 +84,19 @@ The source points indicated with the yellow color are chosen from the automatica
 
 ### Gradient Based Thresholding
 
-Together with Hough line transformation, the Canny edge detection technique holds importance for detecting the lane lines. And the Canny edge detection algorithm is applied by Sobel operators. Sobel operation is a way of taking the derivative in the $x$ or $y$ direction by applying kernels in various sizes. The larger kernel sizes imply taking the gradient over a larger region of the image and results in a smoother gradient.
+Together with Hough line transformation, the Canny edge detection technique holds importance for detecting the lane lines. And the Canny edge detection algorithm is applied by Sobel operators. Sobel operation is a way of taking the derivative in the x or y direction.
+
+A 3x3 sobel operator can be applied in the x or y directions,
+
+for the x direction:
+
+![sobel-x](./images/sobel-x.gif)
+
+and for y direction:
+
+![sobel-y](./images/sobel-y.gif)
+
+These examples are Sobel operators of kernel size 3x3. A larger kernel size implies taking the gradient over a larger region of the image and results in a smoother gradient.
 
 A sobel operation function named `multiple_edge_detection` is implemented combining multiple sobel operations to get a binary representation of an image. An original image (on the left) and the binary representation after the `multiple_edge_detection` function is applied (on the right) is given below (this image is provived by udacity in the project but not being a test image).
 
@@ -156,7 +168,7 @@ The original test images and the resulting images with lane pixel detections and
 
 ### Measuring the radius and the position
 
-[The formula](http://www.intmath.com/applications-differentiation/8-radius-curvature.php) for the radius of curvature at any point x for the curve $y = f(x)$ is used to measure the radius of the lane curvatures. The regression data of the predicted lane lines are used seprately to measure the radius of the left and the right lane curvatures. To measure the radius values in meters, the lane distance is considered to be approximately 30 meters long with the width of the lane as 3.7 meters. Using the bird's-eye viewpoint, the quantities of meters per pixel in x and y dimensions are taken as 3.7/300 and 30/720 respectively. Using these quantites, the coefficients of the polynomial are recalculated in world space and using the previously mentioned radius formula the left and the right radius of the line curvatures are measured. Then the average of these two radius values are taken as the resulting radius of the lane curvature. 
+[The formula](http://www.intmath.com/applications-differentiation/8-radius-curvature.php) for the radius of curvature at any point x for the curve y = f(x) is used to measure the radius of the lane curvatures. The regression data of the predicted lane lines are used seprately to measure the radius of the left and the right lane curvatures. To measure the radius values in meters, the lane distance is considered to be approximately 30 meters long with the width of the lane as 3.7 meters. Using the bird's-eye viewpoint, the quantities of meters per pixel in x and y dimensions are taken as 3.7/300 and 30/720 respectively. Using these quantites, the coefficients of the polynomial are recalculated in world space and using the previously mentioned radius formula the left and the right radius of the line curvatures are measured. Then the average of these two radius values are taken as the resulting radius of the lane curvature. 
 
 For to measure the position of the vehicle, the midpoint of the two predicted lane lines is measured at the bottom of the image as being the reference point. Then the horizontal midpoint of the image is taken as the position of the vehicle and the distance between these two points is measured as the position of the vehicle with respect to the center of the lane.
 
